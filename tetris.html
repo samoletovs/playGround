@@ -41,11 +41,11 @@
   .play-area {
     flex: 1 1 auto; min-height: 0; width: 100%;
     display: flex; align-items: center; justify-content: center;
-    gap: 8px;
+    gap: 4px;
   }
   .side {
     display: flex; flex-direction: column; gap: 6px;
-    flex: 0 0 auto; align-self: stretch;
+    flex: 0 0 56px; width: 56px;
   }
   .side-card {
     background: var(--panel); border-radius: 10px; padding: 6px;
@@ -56,11 +56,10 @@
   .board-wrap {
     position: relative; background: var(--panel); border-radius: 14px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.4); overflow: hidden; touch-action: none;
-    aspect-ratio: 10 / 20;
-    height: 100%;
-    max-width: 100%;
+    flex-shrink: 0;
   }
   canvas#game { width: 100%; height: 100%; display: block; }
+  #hold, #next { width: 44px; height: 44px; display: block; }
   .overlay {
     position: absolute; inset: 0; display: none;
     align-items: center; justify-content: center; flex-direction: column;
@@ -78,16 +77,20 @@
   }
   button:active { transform: translateY(1px); }
   .controls {
-    width: 100%; max-width: 600px; display: grid;
-    grid-template-columns: repeat(6, 1fr); gap: 6px; flex: 0 0 auto;
+    width: 100%; max-width: 600px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    flex: 0 0 auto; padding: 0 8px;
   }
+  .ctrl-l, .ctrl-r { display: flex; flex-direction: column; gap: 6px; }
+  .ctrl-c { display: flex; align-items: center; }
   .controls button {
     appearance: none; border: none; background: var(--panel);
-    color: var(--text); padding: 10px 0;
-    font-size: 14px; font-weight: 600;
-    border-radius: 8px; cursor: pointer;
-    box-shadow: none; display: flex; align-items: center; justify-content: center;
+    color: var(--text); font-size: 20px; font-weight: 700;
+    border-radius: 12px; cursor: pointer; box-shadow: none;
+    display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 2px;
+    width: 74px; height: 50px;
+    touch-action: manipulation;
   }
   .controls .label { font-size: 9px; color: var(--muted); font-weight: 500; text-transform: uppercase; }
   .controls button:active { background: var(--grid); }
@@ -123,7 +126,7 @@
     <div class="side">
       <div class="side-card">
         <span data-en="Hold" data-ru="Запас" data-lv="Rezerve">Hold</span>
-        <canvas id="hold" width="80" height="80"></canvas>
+        <canvas id="hold" width="44" height="44"></canvas>
       </div>
     </div>
 
@@ -143,18 +146,24 @@
     <div class="side">
       <div class="side-card">
         <span data-en="Next" data-ru="След." data-lv="Nāk.">Next</span>
-        <canvas id="next" width="80" height="80"></canvas>
+        <canvas id="next" width="44" height="44"></canvas>
       </div>
     </div>
   </div>
 
   <div class="controls" id="controls">
-    <button data-act="left">←<span class="label" data-en="Left" data-ru="Влево" data-lv="Pa kreisi">Left</span></button>
-    <button data-act="rotate">⟳<span class="label" data-en="Rotate" data-ru="Поворот" data-lv="Pagriezt">Rotate</span></button>
-    <button data-act="right">→<span class="label" data-en="Right" data-ru="Вправо" data-lv="Pa labi">Right</span></button>
-    <button data-act="soft">↓<span class="label" data-en="Soft" data-ru="Вниз" data-lv="Lejup">Soft</span></button>
-    <button data-act="hard">⤓<span class="label" data-en="Drop" data-ru="Бросок" data-lv="Mest">Drop</span></button>
-    <button data-act="hold">⇆<span class="label" data-en="Hold" data-ru="Запас" data-lv="Rezerve">Hold</span></button>
+    <div class="ctrl-l">
+      <button data-act="hard">⤓<span class="label" data-en="Drop" data-ru="Бросок" data-lv="Mest">Drop</span></button>
+      <button data-act="soft">↓<span class="label" data-en="Down" data-ru="Вниз" data-lv="Lejup">Down</span></button>
+      <button data-act="left">←<span class="label" data-en="Left" data-ru="Влево" data-lv="Pa kreisi">Left</span></button>
+    </div>
+    <div class="ctrl-c">
+      <button data-act="hold">⇆<span class="label" data-en="Hold" data-ru="Запас" data-lv="Rezerve">Hold</span></button>
+    </div>
+    <div class="ctrl-r">
+      <button data-act="rotate">↑<span class="label" data-en="Rotate" data-ru="Поворот" data-lv="Pagriezt">Rotate</span></button>
+      <button data-act="right">→<span class="label" data-en="Right" data-ru="Вправо" data-lv="Pa labi">Right</span></button>
+    </div>
   </div>
 
   <div class="hint"
@@ -252,11 +261,19 @@
   bestEl.textContent = best;
 
   // -------- Sizing --------
+  const BOARD_AR = COLS / ROWS; // 0.5
+  const SIDE_W = 56; // matches .side { width: 56px }
   function fitCanvas() {
-    const rect = board.getBoundingClientRect();
+    const pa = playArea.getBoundingClientRect();
+    if (pa.width === 0 || pa.height === 0) return;
+    const availW = Math.max(60, pa.width - SIDE_W * 2 - 8);
+    const bH = Math.min(pa.height, availW / BOARD_AR, 640);
+    const bW = Math.round(bH * BOARD_AR);
+    board.style.width = bW + 'px';
+    board.style.height = bH + 'px';
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
+    canvas.width = Math.floor(bW * dpr);
+    canvas.height = Math.floor(bH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     draw();
   }
@@ -622,17 +639,34 @@
   }
 
   // -------- Controls --------
-  controls.addEventListener('click', (e) => {
-    ensureAudio();
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const act = btn.dataset.act;
-    if (act === 'left') move(-1);
-    else if (act === 'right') move(1);
-    else if (act === 'rotate') tryRotate();
-    else if (act === 'soft') softDrop();
-    else if (act === 'hard') hardDrop();
-    else if (act === 'hold') holdPiece();
+  let repeatTimer = null;
+  function stopRepeat() { clearTimeout(repeatTimer); }
+  function startRepeat(act) {
+    clearTimeout(repeatTimer);
+    repeatTimer = setTimeout(function rep() {
+      if (act === 'left') move(-1);
+      else if (act === 'right') move(1);
+      else if (act === 'soft') softDrop();
+      repeatTimer = setTimeout(rep, 60);
+    }, 200);
+  }
+  controls.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      ensureAudio();
+      if (!alive) return;
+      const act = btn.dataset.act;
+      if (act === 'left') move(-1);
+      else if (act === 'right') move(1);
+      else if (act === 'rotate') tryRotate();
+      else if (act === 'soft') softDrop();
+      else if (act === 'hard') hardDrop();
+      else if (act === 'hold') holdPiece();
+      if (act === 'left' || act === 'right' || act === 'soft') startRepeat(act);
+    }, { passive: false });
+    btn.addEventListener('pointerup', stopRepeat);
+    btn.addEventListener('pointercancel', stopRepeat);
+    btn.addEventListener('pointerleave', stopRepeat);
   });
 
   window.addEventListener('keydown', (e) => {
